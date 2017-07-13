@@ -1,10 +1,14 @@
 {-# LANGUAGE Arrows, DeriveGeneric, FlexibleInstances, MultiParamTypeClasses, OverloadedStrings, TemplateHaskell, UnicodeSyntax #-}
 module Database.Types
     (
-        AffairType,
-        AffairTypeColumns,
-        AffairTypePG,
-        QueryAffairType
+        BaseId(..),
+        ListAffairType,
+        ListAffairTypeColumns,
+        ListAffairTypePGR,
+        ListAffairTypePGW,
+        ListAffairTypePoly(..),
+        QueryListAffairTypes,
+        pListAffairType
     ) where
 
 -- import Database.PostgreSQL.Simple.Types ( PGArray)
@@ -18,31 +22,52 @@ import Data.Profunctor.Product.TH           (makeAdaptorAndInstance)
 
 import Opaleye (Column, Nullable, PGArray, PGUuid, PGInt4, PGInt8, PGText, PGDate, PGFloat8, PGBool, Query, QueryArr, QueryRunner, QueryRunnerColumnDefault(..), Table(Table), Unpackspec,
                             fieldQueryRunnerColumn, matchNullable, isNull,
-                            required, queryTable,
-                            restrict, (.==), (.<=), (.&&), (.<),
+                            required, queryTable, restrict, (.==), (.<=), (.&&), (.<),
                             (.===), (.++), ifThenElse, pgString, aggregate, groupBy,
                             count, avg, sum, leftJoin, runQuery, showSqlForPostgres)
 
 import Database.PostgreSQL.Simple.FromField (FromField(..))
 
 
-type PlannerAffairType = (Integer,Integer,Integer,Maybe (PGArray Integer), String)
+-- type PlannerAffairType = (Integer,Integer,Integer,Maybe (PGArray Integer), String)
 
 newtype BaseId = BaseId Int deriving (Show)
 
 instance FromField BaseId where
   fromField field bs = BaseId <$> fromField field bs
 
-type PgIC = Column PGInt4
-
 instance QueryRunnerColumnDefault PGInt4 BaseId where
   queryRunnerColumnDefault = fieldQueryRunnerColumn
-type AffairType = AffairTypePoly BaseId Int Int [Int] String
-type AffairTypeColumns = ( PgIC, PgIC, PgIC, Column (PGArray PGInt4), Column PGText)
-type QueryAffairType = Query AffairTypePG
+
+instance QueryRunnerColumnDefault (Nullable PGText) [Char] where
+  queryRunnerColumnDefault = fieldQueryRunnerColumn
+
+newtype ArInt = ArInt [Int]
+{-
+instance QueryRunnerColumnDefault PGInt4 ArInt where
+  queryRunnerColumnDefault = fieldQueryRunnerColumn
+
+instance FromField ArInt where
+  fromField field bs = ArInt <$> fromField field bs
+  -}
+type PgIC = Column PGInt4
+type MPgIC = Maybe PgIC
+type AffairType = AffairTypePoly BaseId Int Int (PGArray PGInt4) String
+type AffairTypeColumns = ( MPgIC, MPgIC, MPgIC, Column (Nullable (PGArray PGInt4)), Column (Nullable PGText))
+type QueryAffairTypes = Query AffairTypePGR
 
 data AffairTypePoly idn cd prio asc lbl = AffairType {idn ∷ idn, code ∷ cd, priority ∷ prio, activity_specific_codes ∷ asc, label ∷ lbl}
     deriving Show
-type AffairTypePG = AffairTypePoly PgIC PgIC PgIC (Column (PGArray PGInt4)) (Column PGText)
-
+type AffairTypePGW = AffairTypePoly MPgIC MPgIC MPgIC (Column (Nullable (PGArray PGInt4))) (Column (Nullable PGText))
+type AffairTypePGR = AffairTypePoly PgIC PgIC PgIC (Column (Nullable (PGArray PGInt4))) (Column(Nullable PGText))
 $(makeAdaptorAndInstance "pAffairType" ''AffairTypePoly)
+
+-- Представления
+type ListAffairType = ListAffairTypePoly BaseId Int String
+type ListAffairTypeColumns = ( MPgIC, MPgIC, Column (Nullable PGText))
+type QueryListAffairTypes = Query ListAffairTypePGR
+data ListAffairTypePoly idn prio lbl = ListAffairType {_idn ∷ idn, _priority ∷ prio, _label ∷ lbl}
+    deriving Show
+type ListAffairTypePGW = ListAffairTypePoly MPgIC MPgIC (Column (Nullable PGText))
+type ListAffairTypePGR = ListAffairTypePoly PgIC PgIC (Column(Nullable PGText))
+$(makeAdaptorAndInstance "pListAffairType" ''ListAffairTypePoly)

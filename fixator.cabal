@@ -16,8 +16,11 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:
+                        Database
                         Database.Types
                         Database.Interface
+                        Database.Tables
+                        Database.Queries
   build-depends:
                         base >= 4.7 && < 5,
                         bytestring,
@@ -35,6 +38,7 @@ executable fixator
                         base,
                         base-unicode-symbols,
                         bytestring,
+                        either,
                         lens,
                         fixator,
                         opaleye,
